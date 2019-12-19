@@ -16,23 +16,8 @@
 
 package org.springframework.boot;
 
-import java.lang.reflect.Constructor;
-import java.security.AccessControlException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.CachedIntrospectionResults;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -61,26 +46,16 @@ import org.springframework.core.GenericTypeResolver;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.ConfigurableConversionService;
-import org.springframework.core.env.CommandLinePropertySource;
-import org.springframework.core.env.CompositePropertySource;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.MutablePropertySources;
-import org.springframework.core.env.PropertySource;
-import org.springframework.core.env.SimpleCommandLinePropertySource;
-import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.*;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.SpringFactoriesLoader;
-import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
-import org.springframework.util.ReflectionUtils;
-import org.springframework.util.StopWatch;
-import org.springframework.util.StringUtils;
+import org.springframework.util.*;
 import org.springframework.web.context.support.StandardServletEnvironment;
+
+import java.lang.reflect.Constructor;
+import java.security.AccessControlException;
+import java.util.*;
 
 /**
  * Class that can be used to bootstrap and launch a Spring application from a Java main
@@ -193,6 +168,9 @@ public class SpringApplication {
 
 	private static final Log logger = LogFactory.getLog(SpringApplication.class);
 
+	/**
+	 * 主要的 Java Config 类的数组
+	 */
 	private Set<Class<?>> primarySources;
 
 	private Set<String> sources = new LinkedHashSet<>();
@@ -209,6 +187,9 @@ public class SpringApplication {
 
 	private Banner banner;
 
+	/**
+	 * 资源加载器
+	 */
 	private ResourceLoader resourceLoader;
 
 	private BeanNameGenerator beanNameGenerator;
@@ -293,11 +274,15 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// StopWatch用来记录启动的耗时
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
+
+		// 最终返回这个context对象
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
 		configureHeadlessProperty();
+		// 监听器，在context的不同阶段会触发相应方法
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
@@ -307,7 +292,7 @@ public class SpringApplication {
 					applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
-			context = createApplicationContext();
+			context = createApplicationContext();// 会根据情况创建不同类型的ApplicationContext
 			exceptionReporters = getSpringFactoriesInstances(
 					SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
@@ -370,8 +355,8 @@ public class SpringApplication {
 			ApplicationArguments applicationArguments, Banner printedBanner) {
 		context.setEnvironment(environment);
 		postProcessApplicationContext(context);
-		applyInitializers(context);
-		listeners.contextPrepared(context);
+		applyInitializers(context);// 用于ApplicationContextInitializer执行init
+		listeners.contextPrepared(context);// context prepare好了之后调用contextPrepared
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
 			logStartupProfileInfo(context);
@@ -387,6 +372,8 @@ public class SpringApplication {
 					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 		}
 		// Load the sources
+		// 将其他的spring source配置，加载到当前的ApplicationContext容器里
+		// 类似于xml文件的<import resource="" />
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
 		load(context, sources.toArray(new Object[0]));
@@ -424,6 +411,7 @@ public class SpringApplication {
 			Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// 从 `META-INF/spring.factories` 文件里获取指定类型的实现类
 		Set<String> names = new LinkedHashSet<>(
 				SpringFactoriesLoader.loadFactoryNames(type, classLoader));
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes,
@@ -432,6 +420,17 @@ public class SpringApplication {
 		return instances;
 	}
 
+	/**
+	 * 调用构造函数创建type类型的实例
+	 *
+	 * @param type
+	 * @param parameterTypes	构造函数参数类型
+	 * @param classLoader
+	 * @param args	构造函数参数
+	 * @param names
+	 * @param <T>
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	private <T> List<T> createSpringFactoriesInstances(Class<T> type,
 			Class<?>[] parameterTypes, ClassLoader classLoader, Object[] args,

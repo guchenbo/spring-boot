@@ -27,6 +27,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.ReflectionUtils;
 
 /**
+ * SpringApplicationRunListener的集合，顺序执行每个SpringApplicationRunListener的方法
+ *
  * A collection of {@link SpringApplicationRunListener}.
  *
  * @author Phillip Webb
